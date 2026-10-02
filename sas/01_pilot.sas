@@ -14,11 +14,12 @@ options nodate nonumber validvarname=v7;
 
 /* 1. Read the ADaM transport files from the PhUSE repository, pinned to one commit */
 %let src = https://raw.githubusercontent.com/phuse-org/phuse-scripts/fbd239d9450a99621f0199323d7abf3ae22036db/data/adam/cdiscpilot01;
-%macro get(ds);
-  filename f_&ds temp;
-  proc http url="&src/&ds..xpt" out=f_&ds; run;
-  libname x_&ds xport "%sysfunc(pathname(f_&ds))";
-  data &ds; set x_&ds..&ds; run;
+%macro get(ds);                              /* filerefs and librefs are 8 characters at most: reuse f and x */
+  filename f temp;
+  proc http url="&src/&ds..xpt" out=f; run;
+  libname x xport "%sysfunc(pathname(f))";
+  data &ds; set x.&ds; run;
+  libname x clear; filename f clear;
 %mend;
 %get(adsl) %get(adqsadas) %get(adtte) %get(adae) %get(adlbc)
 
