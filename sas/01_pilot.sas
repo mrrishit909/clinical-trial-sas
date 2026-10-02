@@ -10,6 +10,7 @@
     R Consortium's FDA submission pilot outputs for the same study.                                              */
 
 options nodate nonumber validvarname=v7;
+ods graphics on;                                   /* LIFETEST's plot with the numbers at risk needs it */
 %put NOTE: SAS &sysvlong on &sysscp &sysscpl;
 
 /* 1. Read the ADaM transport files from the PhUSE repository, pinned to one commit */
