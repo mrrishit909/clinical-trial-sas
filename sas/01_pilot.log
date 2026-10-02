@@ -1,0 +1,1031 @@
+                                                           The SAS System
+
+1          ;*';*";*/;quit;run;
+2          OPTIONS PAGENO=MIN;
+3          %LET _CLIENTTASKLABEL='Program';
+4          %LET _CLIENTPROCESSFLOWNAME='Standalone Not In Project';
+5          %LET _CLIENTPROJECTPATH='';
+6          %LET _CLIENTPROJECTPATHHOST='';
+7          %LET _CLIENTPROJECTNAME='';
+8          %LET _SASPROGRAMFILE='';
+9          %LET _SASPROGRAMFILEHOST='';
+10         
+11         ODS _ALL_ CLOSE;
+12         OPTIONS DEV=SVG;
+13         GOPTIONS XPIXELS=0 YPIXELS=0;
+14         %macro HTML5AccessibleGraphSupported;
+15             %if %_SAS_VERCOMP_FV(9,4,4, 0,0,0) >= 0 %then ACCESSIBLE_GRAPH;
+16         %mend;
+17         FILENAME EGHTML TEMP;
+18         ODS HTML5(ID=EGHTML) FILE=EGHTML
+19             OPTIONS(BITMAP_MODE='INLINE')
+20             %HTML5AccessibleGraphSupported
+21             ENCODING='utf-8'
+22             STYLE=HtmlBlue
+23             NOGTITLE
+24             NOGFOOTNOTE
+25             GPATH=&sasworklocation
+26         ;
+NOTE: Writing HTML5(EGHTML) Body file: EGHTML
+27         
+28         options source2; filename p url
+28       ! "https://raw.githubusercontent.com/mrrishit909/clinical-trial-sas/dfafa437fbc0773f006a4e552822f8e799527f2d/sas/01_pilot.s
+28       ! as"; %include p;
+NOTE: %INCLUDE (level 1) file P is file 
+      https://raw.githubusercontent.com/mrrishit909/clinical-trial-sas/dfafa437fbc0773f006a4e552822f8e799527f2d/sas/01_pilot.sas.
+29        +/*  CDISC pilot study CDISCPILOT01: xanomeline skin patch for mild-to-moderate Alzheimer's disease, 254 patients,
+30        +    placebo vs low dose (54 mg) vs high dose (81 mg), 24 weeks. Re-analysed from its public ADaM datasets the way a
+31        +    submission's tables are made:
+32        +      1. who was in the study (demographics, intent-to-treat population)
+33        +      2. who finished it (disposition; who stopped because of side effects)
+34        +      3. did it work: ADAS-Cog(11) change from baseline to week 24, LOCF, ANCOVA (the protocol's primary endpoint)
+35        +      4. was it safe: time to the first skin reaction (Kaplan-Meier, log-rank, Cox), adverse events, glucose
+36        +    Ran in SAS Enterprise Guide (SAS 9.4) on USF's virtual desktop; the log is sas/01_pilot.log. Lines starting CSV|
+37        +    in the log are the results; the repository's check.py recomputes them in Python and compares them with the
+38        +    R Consortium's FDA submission pilot outputs for the same study.                                              */
+39        +
+40        +options nodate nonumber validvarname=v7;
+41        +ods graphics on;                                   /* LIFETEST's plot with the numbers at risk needs it */
+42        +%put NOTE: SAS &sysvlong on &sysscp &sysscpl;
+NOTE: SAS 9.04.01M9P060425 on WIN X64_SRV+
+43        +
+44        +/* 1. Read the ADaM transport files from the PhUSE repository, pinned to one commit */
+45        +%let src =
+45       !+https://raw.githubusercontent.com/phuse-org/phuse-scripts/fbd239d9450a99621f0199323d7abf3ae22036db/data/adam/cdiscpilot01
+45       !+;
+46        +%macro get(ds);                              /* filerefs and librefs are 8 characters at most: reuse f and x */
+47        +  filename f temp;
+48        +  proc http url="&src/&ds..xpt" out=f; run;
+49        +  libname x xport "%sysfunc(pathname(f))";
+50        +  data &ds; set x.&ds; run;
+                                                           The SAS System
+
+51        +  libname x clear; filename f clear;
+52        +%mend;
+53        +%get(adsl) %get(adqsadas) %get(adtte) %get(adae) %get(adlbc)
+
+NOTE: 200 OK
+NOTE: PROCEDURE HTTP used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.00 seconds
+      
+
+NOTE: Libref X was successfully assigned as follows: 
+      Engine:        XPORT 
+      Physical Name: C:\Users\<user>\AppData\Roaming\SAS\EnterpriseGuide\EGTEMP\SEG-19996-b8c5806e\contents\SAS Temporary 
+      Files\_TD14676_AVD-Stat26F-3_\#LN00429
+
+NOTE: There were 254 observations read from the data set X.ADSL.
+NOTE: The data set WORK.ADSL has 254 observations and 48 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: Libref X has been deassigned.
+NOTE: Fileref F has been deassigned.
+
+NOTE: 200 OK
+NOTE: PROCEDURE HTTP used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: Libref X was successfully assigned as follows: 
+      Engine:        XPORT 
+      Physical Name: C:\Users\<user>\AppData\Roaming\SAS\EnterpriseGuide\EGTEMP\SEG-19996-b8c5806e\contents\SAS Temporary 
+      Files\_TD14676_AVD-Stat26F-3_\#LN00430
+
+NOTE: There were 12463 observations read from the data set X.ADQSADAS.
+NOTE: The data set WORK.ADQSADAS has 12463 observations and 40 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: Libref X has been deassigned.
+NOTE: Fileref F has been deassigned.
+
+NOTE: 200 OK
+NOTE: PROCEDURE HTTP used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.00 seconds
+      
+
+NOTE: Libref X was successfully assigned as follows: 
+      Engine:        XPORT 
+      Physical Name: C:\Users\<user>\AppData\Roaming\SAS\EnterpriseGuide\EGTEMP\SEG-19996-b8c5806e\contents\SAS Temporary 
+      Files\_TD14676_AVD-Stat26F-3_\#LN00431
+
+NOTE: There were 254 observations read from the data set X.ADTTE.
+                                                           The SAS System
+
+NOTE: The data set WORK.ADTTE has 254 observations and 26 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: Libref X has been deassigned.
+NOTE: Fileref F has been deassigned.
+
+NOTE: 200 OK
+NOTE: PROCEDURE HTTP used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: Libref X was successfully assigned as follows: 
+      Engine:        XPORT 
+      Physical Name: C:\Users\<user>\AppData\Roaming\SAS\EnterpriseGuide\EGTEMP\SEG-19996-b8c5806e\contents\SAS Temporary 
+      Files\_TD14676_AVD-Stat26F-3_\#LN00432
+
+NOTE: There were 1191 observations read from the data set X.ADAE.
+NOTE: The data set WORK.ADAE has 1191 observations and 55 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+NOTE: Libref X has been deassigned.
+NOTE: Fileref F has been deassigned.
+
+NOTE: 200 OK
+NOTE: PROCEDURE HTTP used (Total process time):
+      real time           0.14 seconds
+      cpu time            0.09 seconds
+      
+
+NOTE: Libref X was successfully assigned as follows: 
+      Engine:        XPORT 
+      Physical Name: C:\Users\<user>\AppData\Roaming\SAS\EnterpriseGuide\EGTEMP\SEG-19996-b8c5806e\contents\SAS Temporary 
+      Files\_TD14676_AVD-Stat26F-3_\#LN00433
+
+NOTE: There were 74264 observations read from the data set X.ADLBC.
+NOTE: The data set WORK.ADLBC has 74264 observations and 46 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.11 seconds
+      cpu time            0.11 seconds
+      
+
+NOTE: Libref X has been deassigned.
+NOTE: Fileref F has been deassigned.
+54        +
+55        +/* Results go to the log as CSV|tag|value|value... lines (explicit separators, so blank values keep their place) */
+56        +%macro csv(ds, tag, vars, where=1);
+57        +  data _null_;
+58        +    set &ds;
+59        +    where &where;
+60        +    length line $500;
+61        +    line = cats('CSV|', "&tag"
+                                                           The SAS System
+
+62        +    %let i = 1;
+63        +    %do %while(%length(%scan(&vars, &i, %str( ))));
+64        +      , '|', %scan(&vars, &i, %str( ))
+65        +      %let i = %eval(&i + 1);
+66        +    %end;
+67        +    );
+68        +    putlog line;
+69        +  run;
+70        +%mend;
+71        +
+72        +proc format;
+73        +  value trt 0 = 'Placebo' 54 = 'Xanomeline low dose' 81 = 'Xanomeline high dose';
+NOTE: Format TRT is already on the library WORK.FORMATS.
+NOTE: Format TRT has been output.
+74        +run;
+
+NOTE: PROCEDURE FORMAT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+75        +
+76        +/* 2. Who was in the study: intent-to-treat population */
+77        +ods output summary=demo;
+78        +proc means data=adsl n mean std median min max stackodsoutput;
+79        +  where ittfl = 'Y';
+80        +  class trt01pn;
+81        +  var age heightbl weightbl bmibl mmsetot;
+82        +run;
+
+NOTE: The data set WORK.DEMO has 15 observations and 11 variables.
+NOTE: There were 254 observations read from the data set WORK.ADSL.
+      WHERE ittfl='Y';
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.03 seconds
+      
+
+83        +%csv(demo, demo, trt01pn variable n mean stddev median min max)
+
+CSV|demo|0|AGE|86|75.209302326|8.5901671271|76|52|89
+CSV|demo|0|HEIGHTBL|86|162.57325581|11.522361119|162.6|137.2|185.4
+CSV|demo|0|WEIGHTBL|86|62.759302326|12.771543533|60.55|34|86.2
+CSV|demo|0|BMIBL|86|23.636046512|3.6719256942|23.4|15.1|33.3
+CSV|demo|0|MMSETOT|86|18.046511628|4.2727783405|19.5|10|23
+CSV|demo|54|AGE|84|75.666666667|8.2860505995|77.5|51|88
+CSV|demo|54|HEIGHTBL|84|163.43333333|10.419240003|162.6|135.9|195.6
+CSV|demo|54|WEIGHTBL|83|67.279518072|14.123598649|64.9|45.4|106.1
+CSV|demo|54|BMIBL|83|25.062650602|4.270508933|24.3|17.7|40.1
+CSV|demo|54|MMSETOT|84|17.869047619|4.2220869673|18|10|24
+CSV|demo|81|AGE|84|74.380952381|7.8860938487|76|56|88
+CSV|demo|81|HEIGHTBL|84|165.8202381|10.131351552|165.1|146.1|190.5
+CSV|demo|81|WEIGHTBL|84|70.004761905|14.653433372|69.2|41.7|108
+CSV|demo|81|BMIBL|84|25.347619048|4.1582687602|24.8|13.7|34.5
+CSV|demo|81|MMSETOT|84|18.511904762|4.1580059158|20|10|24
+NOTE: There were 15 observations read from the data set WORK.DEMO.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+                                                           The SAS System
+
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+84        +proc freq data=adsl noprint;
+85        +  where ittfl = 'Y';
+86        +  tables trt01pn * agegr1 / out=agegrp;
+87        +  tables trt01pn * race / out=race;
+88        +run;
+
+NOTE: There were 254 observations read from the data set WORK.ADSL.
+      WHERE ittfl='Y';
+NOTE: The data set WORK.AGEGRP has 9 observations and 4 variables.
+NOTE: The data set WORK.RACE has 7 observations and 4 variables.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.00 seconds
+      
+
+89        +%csv(agegrp, agegr1, trt01pn agegr1 count)
+
+CSV|agegr1|0|65-80|42
+CSV|agegr1|0|<65|14
+CSV|agegr1|0|>80|30
+CSV|agegr1|54|65-80|47
+CSV|agegr1|54|<65|8
+CSV|agegr1|54|>80|29
+CSV|agegr1|81|65-80|55
+CSV|agegr1|81|<65|11
+CSV|agegr1|81|>80|18
+NOTE: There were 9 observations read from the data set WORK.AGEGRP.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+90        +%csv(race, race, trt01pn race count)
+
+CSV|race|0|BLACK OR AFRICAN AMERICAN|8
+CSV|race|0|WHITE|78
+CSV|race|54|BLACK OR AFRICAN AMERICAN|6
+CSV|race|54|WHITE|78
+CSV|race|81|AMERICAN INDIAN OR ALASKA NATIVE|1
+CSV|race|81|BLACK OR AFRICAN AMERICAN|9
+CSV|race|81|WHITE|74
+NOTE: There were 7 observations read from the data set WORK.RACE.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+91        +
+92        +/* 3. Who finished: reason for leaving the study, and a test of stopping for side effects by arm */
+93        +proc freq data=adsl noprint;
+94        +  tables trt01pn * dcdecod / out=disp;
+95        +run;
+                                                           The SAS System
+
+
+NOTE: There were 254 observations read from the data set WORK.ADSL.
+NOTE: The data set WORK.DISP has 23 observations and 4 variables.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.00 seconds
+      
+
+96        +%csv(disp, disp, trt01pn dcdecod count)
+
+CSV|disp|0|ADVERSE EVENT|8
+CSV|disp|0|COMPLETED|58
+CSV|disp|0|DEATH|2
+CSV|disp|0|LACK OF EFFICACY|3
+CSV|disp|0|LOST TO FOLLOW-UP|1
+CSV|disp|0|PHYSICIAN DECISION|1
+CSV|disp|0|PROTOCOL VIOLATION|2
+CSV|disp|0|STUDY TERMINATED BY SPONSOR|2
+CSV|disp|0|WITHDRAWAL BY SUBJECT|9
+CSV|disp|54|ADVERSE EVENT|44
+CSV|disp|54|COMPLETED|25
+CSV|disp|54|DEATH|1
+CSV|disp|54|LOST TO FOLLOW-UP|1
+CSV|disp|54|PROTOCOL VIOLATION|1
+CSV|disp|54|STUDY TERMINATED BY SPONSOR|2
+CSV|disp|54|WITHDRAWAL BY SUBJECT|10
+CSV|disp|81|ADVERSE EVENT|40
+CSV|disp|81|COMPLETED|27
+CSV|disp|81|LACK OF EFFICACY|1
+CSV|disp|81|PHYSICIAN DECISION|2
+CSV|disp|81|PROTOCOL VIOLATION|3
+CSV|disp|81|STUDY TERMINATED BY SPONSOR|3
+CSV|disp|81|WITHDRAWAL BY SUBJECT|8
+NOTE: There were 23 observations read from the data set WORK.DISP.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+97        +data adsl2;
+98        +  set adsl;
+99        +  ae_stop = (dsraefl = 'Y');
+100       +run;
+
+NOTE: There were 254 observations read from the data set WORK.ADSL.
+NOTE: The data set WORK.ADSL2 has 254 observations and 49 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+101       +ods output FishersExact=fisher;
+102       +proc freq data=adsl2;
+103       +  tables trt01pn * ae_stop / fisher;
+104       +run;
+
+NOTE: The data set WORK.FISHER has 2 observations and 5 variables.
+                                                           The SAS System
+
+NOTE: There were 254 observations read from the data set WORK.ADSL2.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.03 seconds
+      
+
+105       +%csv(fisher, fisher, name1 nvalue1)
+
+CSV|fisher|P_TABLE|1.4421038634047E-12
+CSV|fisher|XP2_FISH|9.3761569354721E-11
+NOTE: There were 2 observations read from the data set WORK.FISHER.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+106       +
+107       +/* 4. Did it work: ADAS-Cog(11) change from baseline to week 24 (LOCF), efficacy population */
+108       +data adas;
+109       +  set adqsadas;
+110       +  where efffl = 'Y' and ittfl = 'Y' and paramcd = 'ACTOT' and anl01fl = 'Y' and avisitn = 24;
+111       +run;
+
+NOTE: There were 234 observations read from the data set WORK.ADQSADAS.
+      WHERE (efffl='Y') and (ittfl='Y') and (paramcd='ACTOT') and (anl01fl='Y') and (avisitn=24);
+NOTE: The data set WORK.ADAS has 234 observations and 40 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+112       +ods output summary=adas_desc;
+113       +proc means data=adas n mean std median min max stackodsoutput;
+114       +  class trtpn;
+115       +  var base aval chg;
+116       +run;
+
+NOTE: The data set WORK.ADAS_DESC has 9 observations and 11 variables.
+NOTE: There were 234 observations read from the data set WORK.ADAS.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.03 seconds
+      
+
+117       +%csv(adas_desc, adas_desc, trtpn variable n mean stddev median min max)
+
+CSV|adas_desc|0|BASE|79|24.121780882|12.186369514|21|5|61
+CSV|adas_desc|0|AVAL|79|26.66652117|13.794293407|24|5|61.551724138
+CSV|adas_desc|0|CHG|79|2.5447402881|5.8038991966|2|-11|16
+CSV|adas_desc|54|BASE|81|24.407407407|12.922447852|21|5|56.724137931
+CSV|adas_desc|54|AVAL|81|26.402724564|13.180654837|25|6|62
+CSV|adas_desc|54|CHG|81|1.9953171562|5.5527862367|2|-11|17
+CSV|adas_desc|81|BASE|74|21.297297297|11.736525039|18|3|57
+CSV|adas_desc|81|AVAL|74|22.767785026|12.483580375|20|3|61.551724138
+CSV|adas_desc|81|CHG|74|1.4704877291|4.2623848717|1|-7|13
+NOTE: There were 9 observations read from the data set WORK.ADAS_DESC.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+                                                           The SAS System
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+118       +
+119       +/* dose response: treatment as a continuous dose (0, 54, 81), site group as a factor, baseline as a covariate */
+120       +ods output ParameterEstimates=dose;
+121       +proc glm data=adas;
+122       +  class sitegr1;
+123       +  model chg = trtpn sitegr1 base / solution;
+124       +run;
+
+124      !+     quit;
+NOTE: The data set WORK.DOSE has 14 observations and 7 variables.
+
+NOTE: PROCEDURE GLM used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.03 seconds
+      
+
+125       +%csv(dose, dose, parameter estimate stderr probt, where=upcase(parameter) = 'TRTPN')
+
+CSV|dose|TRTPN|-0.011792224|0.0101098403|0.2447056739
+NOTE: There were 1 observations read from the data set WORK.DOSE.
+      WHERE UPCASE(parameter)='TRTPN';
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+126       +
+127       +/* pairwise: treatment as a factor */
+128       +ods output LSMeans=lsm LSMeanCL=lsmcl Estimates=est;
+129       +proc glm data=adas;
+130       +  class trtpn sitegr1;
+131       +  model chg = trtpn sitegr1 base / clparm;
+132       +  lsmeans trtpn / stderr cl;
+133       +  estimate 'Low - Placebo'  trtpn -1 1 0;
+134       +  estimate 'High - Placebo' trtpn -1 0 1;
+135       +  estimate 'High - Low'     trtpn 0 -1 1;
+136       +run;
+
+NOTE: Some graph legends have been dropped due to size constraints. Try adjusting the MAXLEGENDAREA=, WIDTH= and HEIGHT= options in 
+      the ODS GRAPHICS statement.
+136      !+     quit;
+NOTE: The data set WORK.EST has 3 observations and 8 variables.
+NOTE: The data set WORK.LSMCL has 3 observations and 6 variables.
+NOTE: The data set WORK.LSM has 3 observations and 6 variables.
+
+NOTE: PROCEDURE GLM used (Total process time):
+      real time           1.14 seconds
+      cpu time            0.26 seconds
+      
+
+137       +%csv(lsm, adas_lsm, trtpn lsmean stderr)
+
+CSV|adas_lsm|0|2.4736755977|0.6047157366
+                                                           The SAS System
+
+CSV|adas_lsm|54|2.0068932402|0.5935241558
+CSV|adas_lsm|81|1.467662|0.6243844324
+NOTE: There were 3 observations read from the data set WORK.LSM.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+138       +%csv(est, adas_diff, parameter estimate stderr probt lowercl uppercl)
+
+CSV|adas_diff|Low - Placebo|-0.466782358|0.8180422223|0.5688469713|-2.078984544|1.145419829
+CSV|adas_diff|High - Placebo|-1.006013598|0.8405293568|0.2326410959|-2.662533555|0.6505063591
+CSV|adas_diff|High - Low|-0.53923124|0.8361089016|0.5196448708|-2.187039339|1.1085768588
+NOTE: There were 3 observations read from the data set WORK.EST.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+139       +
+140       +/* mean change at each visit, for the chart */
+141       +data adas_t;
+142       +  set adqsadas;
+143       +  where efffl = 'Y' and ittfl = 'Y' and paramcd = 'ACTOT' and anl01fl = 'Y' and avisitn in (8, 16, 24);
+144       +run;
+
+NOTE: There were 702 observations read from the data set WORK.ADQSADAS.
+      WHERE (efffl='Y') and (ittfl='Y') and (paramcd='ACTOT') and (anl01fl='Y') and avisitn in (8, 16, 24);
+NOTE: The data set WORK.ADAS_T has 702 observations and 40 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+145       +proc means data=adas_t noprint nway;
+146       +  class trtpn avisitn;
+147       +  var chg;
+148       +  output out=adas_time n=n mean=mean stderr=se;
+149       +run;
+
+NOTE: There were 702 observations read from the data set WORK.ADAS_T.
+NOTE: The data set WORK.ADAS_TIME has 9 observations and 7 variables.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+150       +%csv(adas_time, adas_time, trtpn avisitn n mean se)
+
+CSV|adas_time|0|8|79|0.8472282846|0.5410052783
+CSV|adas_time|0|16|79|1.9621431689|0.6630458018
+CSV|adas_time|0|24|79|2.5447402881|0.6529896764
+CSV|adas_time|54|8|81|1.7641549596|0.4602421973
+CSV|adas_time|54|16|81|1.6100468284|0.4555685424
+CSV|adas_time|54|24|81|1.9953171562|0.6169762485
+CSV|adas_time|81|8|74|0.962721342|0.4213896261
+                                                           The SAS System
+
+CSV|adas_time|81|16|74|1.192917055|0.5034053216
+CSV|adas_time|81|24|74|1.4704877291|0.4954921768
+NOTE: There were 9 observations read from the data set WORK.ADAS_TIME.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+151       +
+152       +/* 5. Was it safe: time to the first dermatologic event, safety population */
+153       +data tte;
+154       +  set adtte;
+155       +  where saffl = 'Y' and paramcd = 'TTDE';
+156       +run;
+
+NOTE: There were 254 observations read from the data set WORK.ADTTE.
+      WHERE (saffl='Y') and (paramcd='TTDE');
+NOTE: The data set WORK.TTE has 254 observations and 26 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+157       +ods output HomTests=logrank Quartiles=quart;
+158       +proc lifetest data=tte plots=survival(atrisk=0 to 200 by 20);
+159       +  time aval * cnsr(1);
+160       +  strata trtan;
+161       +  format trtan trt.;
+162       +run;
+
+NOTE: The LOGLOG transform is used to compute the confidence limits for the quartiles of the survivor distribution. To suppress 
+      using this transform, specify CONFTYPE=LINEAR in the PROC LIFETEST statement.
+NOTE: The data set WORK.QUART has 9 observations and 7 variables.
+NOTE: The data set WORK.LOGRANK has 3 observations and 4 variables.
+NOTE: PROCEDURE LIFETEST used (Total process time):
+      real time           1.08 seconds
+      cpu time            0.28 seconds
+      
+
+163       +%csv(logrank, logrank, test chisq df probchisq)
+
+CSV|logrank|Log-Rank|60.269556739|2|8.1777163138636E-14
+CSV|logrank|Wilcoxon|43.898339873|2|2.9349223415993E-10
+CSV|logrank|-2Log(LR)|100.93781049|2|1.2067934508029E-22
+NOTE: There were 3 observations read from the data set WORK.LOGRANK.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+164       +%csv(quart, km_median, trtan estimate lowerlimit upperlimit, where=percent = 50)
+
+CSV|km_median|0|.|.|.
+CSV|km_median|81|36|23|46
+CSV|km_median|54|33|27|48
+NOTE: There were 3 observations read from the data set WORK.QUART.
+                                                           The SAS System
+
+      WHERE percent=50;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+165       +data grid;
+166       +  do t = 0 to 200 by 20; output; end;
+167       +run;
+
+NOTE: The data set WORK.GRID has 11 observations and 1 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+168       +proc sql;
+169       +  create table atrisk as
+170       +    select a.trtan, g.t, sum(a.aval >= g.t) as at_risk
+171       +      from grid as g, tte as a
+172       +     group by a.trtan, g.t
+173       +     order by a.trtan, g.t;
+NOTE: The execution of this query involves performing one or more Cartesian product joins that can not be optimized.
+NOTE: Table WORK.ATRISK created, with 33 rows and 3 columns.
+
+174       +quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+      
+
+175       +%csv(atrisk, atrisk, trtan t at_risk)
+
+CSV|atrisk|0|0|86
+CSV|atrisk|0|20|75
+CSV|atrisk|0|40|65
+CSV|atrisk|0|60|59
+CSV|atrisk|0|80|50
+CSV|atrisk|0|100|47
+CSV|atrisk|0|120|45
+CSV|atrisk|0|140|42
+CSV|atrisk|0|160|40
+CSV|atrisk|0|180|35
+CSV|atrisk|0|200|0
+CSV|atrisk|54|0|84
+CSV|atrisk|54|20|58
+CSV|atrisk|54|40|31
+CSV|atrisk|54|60|20
+CSV|atrisk|54|80|14
+CSV|atrisk|54|100|12
+CSV|atrisk|54|120|8
+CSV|atrisk|54|140|6
+CSV|atrisk|54|160|6
+CSV|atrisk|54|180|5
+CSV|atrisk|54|200|0
+CSV|atrisk|81|0|84
+CSV|atrisk|81|20|48
+CSV|atrisk|81|40|31
+                                                           The SAS System
+
+CSV|atrisk|81|60|14
+CSV|atrisk|81|80|7
+CSV|atrisk|81|100|4
+CSV|atrisk|81|120|4
+CSV|atrisk|81|140|4
+CSV|atrisk|81|160|4
+CSV|atrisk|81|180|3
+CSV|atrisk|81|200|0
+NOTE: There were 33 observations read from the data set WORK.ATRISK.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+176       +ods output ParameterEstimates=cox;
+177       +proc phreg data=tte;
+178       +  class trtan(ref='0');
+179       +  model aval * cnsr(1) = trtan / risklimits;
+180       +run;
+
+NOTE: Convergence criterion (GCONV=1E-8) satisfied.
+NOTE: The data set WORK.COX has 2 observations and 11 variables.
+NOTE: PROCEDURE PHREG used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.04 seconds
+      
+
+181       +%csv(cox, cox, classval0 estimate stderr probchisq hazardratio hrlowercl hruppercl)
+
+CSV|cox|54|1.4156004122|0.2295453606|6.9608926483819E-10|4.1189587969|2.6266250537|6.4591714551
+CSV|cox|81|1.6060846615|0.2333093007|5.8223901289016E-12|4.9832618246|3.1544269112|7.8723961947
+NOTE: There were 2 observations read from the data set WORK.COX.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+182       +
+183       +/* adverse events that started on treatment: subjects with at least one, by arm */
+184       +proc sql;
+185       +  create table saf_n as select trt01an as trtan, count(*) as n from adsl where saffl = 'Y' group by trt01an;
+NOTE: Table WORK.SAF_N created, with 3 rows and 2 columns.
+
+186       +  create table ae_any as select trtan, count(distinct usubjid) as subjects from adae
+187       +    where saffl = 'Y' and trtemfl = 'Y' group by trtan;
+NOTE: Table WORK.AE_ANY created, with 3 rows and 2 columns.
+
+188       +  create table ae_derm as select trtan, count(distinct usubjid) as subjects from adae
+189       +    where saffl = 'Y' and trtemfl = 'Y' and cq01nam ne '' group by trtan;
+NOTE: Table WORK.AE_DERM created, with 3 rows and 2 columns.
+
+190       +  create table ae_soc as select aebodsys, trtan, count(distinct usubjid) as subjects from adae
+191       +    where saffl = 'Y' and trtemfl = 'Y' group by aebodsys, trtan;
+NOTE: Table WORK.AE_SOC created, with 60 rows and 3 columns.
+
+192       +  create table ae_pt as select aedecod, trtan, count(distinct usubjid) as subjects from adae
+                                                           The SAS System
+
+193       +    where saffl = 'Y' and trtemfl = 'Y' group by aedecod, trtan;
+NOTE: Table WORK.AE_PT created, with 354 rows and 3 columns.
+
+194       +quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.07 seconds
+      
+
+195       +%csv(saf_n, saf_n, trtan n)
+
+CSV|saf_n|0|86
+CSV|saf_n|54|84
+CSV|saf_n|81|84
+NOTE: There were 3 observations read from the data set WORK.SAF_N.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+196       +%csv(ae_any, ae_any, trtan subjects)
+
+CSV|ae_any|0|65
+CSV|ae_any|54|77
+CSV|ae_any|81|76
+NOTE: There were 3 observations read from the data set WORK.AE_ANY.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+197       +%csv(ae_derm, ae_derm, trtan subjects)
+
+CSV|ae_derm|0|29
+CSV|ae_derm|54|62
+CSV|ae_derm|81|61
+NOTE: There were 3 observations read from the data set WORK.AE_DERM.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+198       +%csv(ae_soc, ae_soc, aebodsys trtan subjects)
+
+CSV|ae_soc|CARDIAC DISORDERS|0|12
+CSV|ae_soc|CARDIAC DISORDERS|54|13
+CSV|ae_soc|CARDIAC DISORDERS|81|15
+CSV|ae_soc|CONGENITAL, FAMILIAL AND GENETIC DISORDERS|54|1
+CSV|ae_soc|CONGENITAL, FAMILIAL AND GENETIC DISORDERS|81|2
+CSV|ae_soc|EAR AND LABYRINTH DISORDERS|0|1
+CSV|ae_soc|EAR AND LABYRINTH DISORDERS|54|2
+CSV|ae_soc|EAR AND LABYRINTH DISORDERS|81|1
+CSV|ae_soc|EYE DISORDERS|0|2
+CSV|ae_soc|EYE DISORDERS|54|2
+CSV|ae_soc|EYE DISORDERS|81|1
+                                                           The SAS System
+
+CSV|ae_soc|GASTROINTESTINAL DISORDERS|0|17
+CSV|ae_soc|GASTROINTESTINAL DISORDERS|54|14
+CSV|ae_soc|GASTROINTESTINAL DISORDERS|81|20
+CSV|ae_soc|GENERAL DISORDERS AND ADMINISTRATION SITE CONDITIONS|0|21
+CSV|ae_soc|GENERAL DISORDERS AND ADMINISTRATION SITE CONDITIONS|54|47
+CSV|ae_soc|GENERAL DISORDERS AND ADMINISTRATION SITE CONDITIONS|81|40
+CSV|ae_soc|HEPATOBILIARY DISORDERS|0|1
+CSV|ae_soc|IMMUNE SYSTEM DISORDERS|54|1
+CSV|ae_soc|INFECTIONS AND INFESTATIONS|0|16
+CSV|ae_soc|INFECTIONS AND INFESTATIONS|54|9
+CSV|ae_soc|INFECTIONS AND INFESTATIONS|81|13
+CSV|ae_soc|INJURY, POISONING AND PROCEDURAL COMPLICATIONS|0|4
+CSV|ae_soc|INJURY, POISONING AND PROCEDURAL COMPLICATIONS|54|5
+CSV|ae_soc|INJURY, POISONING AND PROCEDURAL COMPLICATIONS|81|5
+CSV|ae_soc|INVESTIGATIONS|0|10
+CSV|ae_soc|INVESTIGATIONS|54|6
+CSV|ae_soc|INVESTIGATIONS|81|6
+CSV|ae_soc|METABOLISM AND NUTRITION DISORDERS|0|6
+CSV|ae_soc|METABOLISM AND NUTRITION DISORDERS|54|1
+CSV|ae_soc|METABOLISM AND NUTRITION DISORDERS|81|2
+CSV|ae_soc|MUSCULOSKELETAL AND CONNECTIVE TISSUE DISORDERS|0|4
+CSV|ae_soc|MUSCULOSKELETAL AND CONNECTIVE TISSUE DISORDERS|54|7
+CSV|ae_soc|MUSCULOSKELETAL AND CONNECTIVE TISSUE DISORDERS|81|7
+CSV|ae_soc|NEOPLASMS BENIGN, MALIGNANT AND UNSPECIFIED (INCL CYSTS AND POLYPS)|54|2
+CSV|ae_soc|NEOPLASMS BENIGN, MALIGNANT AND UNSPECIFIED (INCL CYSTS AND POLYPS)|81|1
+CSV|ae_soc|NERVOUS SYSTEM DISORDERS|0|8
+CSV|ae_soc|NERVOUS SYSTEM DISORDERS|54|20
+CSV|ae_soc|NERVOUS SYSTEM DISORDERS|81|25
+CSV|ae_soc|PSYCHIATRIC DISORDERS|0|10
+CSV|ae_soc|PSYCHIATRIC DISORDERS|54|10
+CSV|ae_soc|PSYCHIATRIC DISORDERS|81|8
+CSV|ae_soc|RENAL AND URINARY DISORDERS|0|4
+CSV|ae_soc|RENAL AND URINARY DISORDERS|54|3
+CSV|ae_soc|RENAL AND URINARY DISORDERS|81|3
+CSV|ae_soc|REPRODUCTIVE SYSTEM AND BREAST DISORDERS|0|2
+CSV|ae_soc|REPRODUCTIVE SYSTEM AND BREAST DISORDERS|81|1
+CSV|ae_soc|RESPIRATORY, THORACIC AND MEDIASTINAL DISORDERS|0|8
+CSV|ae_soc|RESPIRATORY, THORACIC AND MEDIASTINAL DISORDERS|54|9
+CSV|ae_soc|RESPIRATORY, THORACIC AND MEDIASTINAL DISORDERS|81|10
+CSV|ae_soc|SKIN AND SUBCUTANEOUS TISSUE DISORDERS|0|20
+CSV|ae_soc|SKIN AND SUBCUTANEOUS TISSUE DISORDERS|54|39
+CSV|ae_soc|SKIN AND SUBCUTANEOUS TISSUE DISORDERS|81|40
+CSV|ae_soc|SOCIAL CIRCUMSTANCES|81|1
+CSV|ae_soc|SURGICAL AND MEDICAL PROCEDURES|0|2
+CSV|ae_soc|SURGICAL AND MEDICAL PROCEDURES|54|1
+CSV|ae_soc|SURGICAL AND MEDICAL PROCEDURES|81|2
+CSV|ae_soc|VASCULAR DISORDERS|0|3
+CSV|ae_soc|VASCULAR DISORDERS|54|3
+CSV|ae_soc|VASCULAR DISORDERS|81|1
+NOTE: There were 60 observations read from the data set WORK.AE_SOC.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+199       +%csv(ae_pt, ae_pt, aedecod trtan subjects, where=subjects >= 5)
+
+                                                           The SAS System
+
+CSV|ae_pt|APPLICATION SITE DERMATITIS|0|5
+CSV|ae_pt|APPLICATION SITE DERMATITIS|54|9
+CSV|ae_pt|APPLICATION SITE DERMATITIS|81|7
+CSV|ae_pt|APPLICATION SITE ERYTHEMA|54|12
+CSV|ae_pt|APPLICATION SITE ERYTHEMA|81|15
+CSV|ae_pt|APPLICATION SITE IRRITATION|54|9
+CSV|ae_pt|APPLICATION SITE IRRITATION|81|9
+CSV|ae_pt|APPLICATION SITE PRURITUS|0|6
+CSV|ae_pt|APPLICATION SITE PRURITUS|54|22
+CSV|ae_pt|APPLICATION SITE PRURITUS|81|22
+CSV|ae_pt|APPLICATION SITE VESICLES|81|6
+CSV|ae_pt|BLISTER|54|5
+CSV|ae_pt|COUGH|54|5
+CSV|ae_pt|COUGH|81|5
+CSV|ae_pt|DIARRHOEA|0|9
+CSV|ae_pt|DIZZINESS|54|8
+CSV|ae_pt|DIZZINESS|81|11
+CSV|ae_pt|ERYTHEMA|0|8
+CSV|ae_pt|ERYTHEMA|54|14
+CSV|ae_pt|ERYTHEMA|81|14
+CSV|ae_pt|FATIGUE|54|5
+CSV|ae_pt|FATIGUE|81|5
+CSV|ae_pt|HEADACHE|81|5
+CSV|ae_pt|HYPERHIDROSIS|81|8
+CSV|ae_pt|NASOPHARYNGITIS|81|6
+CSV|ae_pt|NAUSEA|81|6
+CSV|ae_pt|PRURITUS|0|8
+CSV|ae_pt|PRURITUS|54|21
+CSV|ae_pt|PRURITUS|81|26
+CSV|ae_pt|RASH|0|5
+CSV|ae_pt|RASH|54|13
+CSV|ae_pt|RASH|81|9
+CSV|ae_pt|SINUS BRADYCARDIA|54|7
+CSV|ae_pt|SINUS BRADYCARDIA|81|8
+CSV|ae_pt|SKIN IRRITATION|54|6
+CSV|ae_pt|SKIN IRRITATION|81|5
+CSV|ae_pt|UPPER RESPIRATORY TRACT INFECTION|0|6
+CSV|ae_pt|VOMITING|81|7
+NOTE: There were 38 observations read from the data set WORK.AE_PT.
+      WHERE subjects>=5;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+200       +
+201       +/* glucose: change from baseline to week 20, high dose vs placebo, ANCOVA with baseline as a covariate */
+202       +data gluc;
+203       +  set adlbc;
+204       +  where paramcd = 'GLUC' and avisitn = 20 and trtpn in (0, 81) and chg ne . and base ne .;
+205       +run;
+
+NOTE: There were 96 observations read from the data set WORK.ADLBC.
+      WHERE (paramcd='GLUC') and (avisitn=20) and trtpn in (0, 81) and (chg not = .) and (base not = .);
+NOTE: The data set WORK.GLUC has 96 observations and 46 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+                                                           The SAS System
+
+      
+
+206       +ods output LSMeanCL=g_lsmcl Estimates=g_est FitStatistics=g_fit;
+207       +proc glm data=gluc;
+208       +  class trtpn;
+209       +  model chg = trtpn base / clparm;
+210       +  lsmeans trtpn / cl;
+211       +  estimate 'High - Placebo' trtpn -1 1;
+212       +run;
+
+212      !+     quit;
+NOTE: The data set WORK.G_FIT has 1 observations and 5 variables.
+NOTE: The data set WORK.G_EST has 1 observations and 8 variables.
+NOTE: The data set WORK.G_LSMCL has 2 observations and 6 variables.
+
+NOTE: PROCEDURE GLM used (Total process time):
+      real time           0.86 seconds
+      cpu time            0.21 seconds
+      
+
+213       +%csv(g_est, gluc_diff, parameter estimate stderr probt lowercl uppercl)
+
+CSV|gluc_diff|High - Placebo|0.065373909|0.2890771465|0.8215834293|-0.508676013|0.6394238311
+NOTE: There were 1 observations read from the data set WORK.G_EST.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+214       +%csv(g_fit, gluc_fit, rootmse)
+
+CSV|gluc_fit|1.3234707413
+NOTE: There were 1 observations read from the data set WORK.G_FIT.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+215       +%csv(g_lsmcl, gluc_lsm, trtpn lsmean lowercl uppercl)
+
+CSV|gluc_lsm|0|0.0939572794|-0.23209776|0.4200123192
+CSV|gluc_lsm|81|0.1593311884|-0.312920444|0.6315828205
+NOTE: There were 2 observations read from the data set WORK.G_LSMCL.
+      WHERE 1 /* an obviously TRUE WHERE clause */ ;
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+216       +
+217       +/* 6. Charts */
+218       +data adas_plot;
+219       +  set adas_time;
+220       +  lo = mean - 1.96 * se; hi = mean + 1.96 * se;
+221       +  format trtpn trt.;
+222       +run;
+                                                           The SAS System
+
+
+NOTE: There were 9 observations read from the data set WORK.ADAS_TIME.
+NOTE: The data set WORK.ADAS_PLOT has 9 observations and 9 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+223       +proc sgplot data=adas_plot;
+224       +  title 'ADAS-Cog(11): mean change from baseline (LOCF); higher = worse';
+225       +  series x=avisitn y=mean / group=trtpn markers name='s';
+226       +  scatter x=avisitn y=mean / group=trtpn yerrorlower=lo yerrorupper=hi;
+227       +  refline 0 / axis=y;
+228       +  xaxis values=(8 16 24) label='Week'; yaxis label='Mean change (95% CI)';
+229       +  keylegend 's' / title='';
+230       +run;
+
+NOTE: PROCEDURE SGPLOT used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.07 seconds
+      
+NOTE: There were 9 observations read from the data set WORK.ADAS_PLOT.
+
+231       +data disp_plot;
+232       +  set disp;
+233       +  length reason $24;
+234       +  reason = ifc(dcdecod = 'COMPLETED', '1 Completed', ifc(dcdecod = 'ADVERSE EVENT', '2 Stopped: adverse event', '3
+234      !+Stopped: other'));
+235       +  format trt01pn trt.;
+236       +run;
+
+NOTE: There were 23 observations read from the data set WORK.DISP.
+NOTE: The data set WORK.DISP_PLOT has 23 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+237       +proc sgplot data=disp_plot pctlevel=group;
+238       +  title 'How patients left the study';
+239       +  hbar trt01pn / response=count group=reason groupdisplay=stack stat=percent;
+240       +  xaxis label='Percent of randomised patients'; yaxis display=(nolabel);
+241       +run;
+
+NOTE: PROCEDURE SGPLOT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.04 seconds
+      
+NOTE: There were 23 observations read from the data set WORK.DISP_PLOT.
+
+242       +title;
+NOTE: %INCLUDE (level 1) ending.
+243        
+244        %LET _CLIENTTASKLABEL=;
+245        %LET _CLIENTPROCESSFLOWNAME=;
+246        %LET _CLIENTPROJECTPATH=;
+247        %LET _CLIENTPROJECTPATHHOST=;
+248        %LET _CLIENTPROJECTNAME=;
+                                                           The SAS System
+
+249        %LET _SASPROGRAMFILE=;
+250        %LET _SASPROGRAMFILEHOST=;
+251        
+252        ;*';*";*/;quit;run;
+253        ODS _ALL_ CLOSE;
+254        
+255        
+256        QUIT; RUN;
+257        
