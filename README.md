@@ -77,7 +77,7 @@ The `%csv` macro writes its separators explicitly from the start, because `CATX`
 | LS mean change | 2.47 | 2.01 | 1.47 |
 | vs placebo (95% CI) | | −0.5 (−2.1 to 1.1), p = 0.569 | −1.0 (−2.7 to 0.7), p = 0.233 |
 
-The dose-response test gives p = 0.245. Every one of these matches the R Consortium's Table 14-3.01.
+The dose-response test gives p = 0.245. The R Consortium's Table 14-3.01 matches the patient counts, mean (SD), differences, confidence intervals and p-values. It has no per-arm LS means, so those were checked against Python only.
 
 ![ADAS-Cog](charts/02_adas_sas.png)
 
